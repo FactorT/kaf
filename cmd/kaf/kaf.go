@@ -87,7 +87,8 @@ func getConfig() (saramaConfig *sarama.Config) {
 			if cluster.TLS.Cafile != "" {
 				caCert, err := os.ReadFile(cluster.TLS.Cafile)
 				if err != nil {
-					errorExit("Unable to read Cafile: %v\n", err)
+					fmt.Println(err)
+					os.Exit(1)
 				}
 				caCertPool := x509.NewCertPool()
 				caCertPool.AppendCertsFromPEM(caCert)
@@ -109,6 +110,7 @@ func getConfig() (saramaConfig *sarama.Config) {
 				tlsConfig.Certificates = []tls.Certificate{cert}
 			}
 			saramaConfig.Net.TLS.Config = tlsConfig
+
 		} else {
 			saramaConfig.Net.TLS.Config = &tls.Config{InsecureSkipVerify: false}
 		}

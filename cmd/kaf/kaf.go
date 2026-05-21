@@ -78,28 +78,41 @@ func getConfig() (saramaConfig *sarama.Config) {
 		}
 		saramaConfig.Net.TLS.Config = tlsConfig
 	}
-	if cluster.SecurityProtocol == "SASL_SSL" {
-		saramaConfig.Net.TLS.Enable = true
-		if cluster.TLS != nil {
-			tlsConfig := &tls.Config{
-				InsecureSkipVerify: cluster.TLS.Insecure,
-			}
-			if cluster.TLS.Cafile != "" {
-				caCert, err := os.ReadFile(cluster.TLS.Cafile)
-				if err != nil {
-					fmt.Println(err)
-					os.Exit(1)
-				}
-				caCertPool := x509.NewCertPool()
-				caCertPool.AppendCertsFromPEM(caCert)
-				tlsConfig.RootCAs = caCertPool
-			}
-			saramaConfig.Net.TLS.Config = tlsConfig
-
-		} else {
-			saramaConfig.Net.TLS.Config = &tls.Config{InsecureSkipVerify: false}
-		}
-	}
+    if cluster.SecurityProtocol == "SASL_SSL" {
+        saramaConfig.Net.TLS.Enable = true
+        if cluster.TLS != nil {
+            tlsConfig := &tls.Config{
+                InsecureSkipVerify: cluster.TLS.Insecure,
+            }
+            if cluster.TLS.Cafile != "" {
+                caCert, err := os.ReadFile(cluster.TLS.Cafile)
+                if err != nil {
+                    errorExit("Unable to read Cafile: %v\n", err)
+                }
+                caCertPool := x509.NewCertPool()
+                caCertPool.AppendCertsFromPEM(caCert)
+                tlsConfig.RootCAs = caCertPool
+            }
+            if cluster.TLS.Clientfile != "" && cluster.TLS.Clientkeyfile != "" {
+                clientCert, err := os.ReadFile(cluster.TLS.Clientfile)
+                if err != nil {
+                    errorExit("Unable to read Clientfile: %v\n", err)
+                }
+                clientKey, err := os.ReadFile(cluster.TLS.Clientkeyfile)
+                if err != nil {
+                    errorExit("Unable to read Clientkeyfile: %v\n", err)
+                }
+                cert, err := tls.X509KeyPair(clientCert, clientKey)
+                if err != nil {
+                    errorExit("Unable to create KeyPair: %v\n", err)
+                }
+                tlsConfig.Certificates = []tls.Certificate{cert}
+            }
+            saramaConfig.Net.TLS.Config = tlsConfig
+        } else {
+            saramaConfig.Net.TLS.Config = &tls.Config{InsecureSkipVerify: false}
+        }
+    }
 	if cluster.SecurityProtocol == "SASL_SSL" || cluster.SecurityProtocol == "SASL_PLAINTEXT" {
 		if cluster.SASL.Mechanism == "SCRAM-SHA-512" {
 			saramaConfig.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
